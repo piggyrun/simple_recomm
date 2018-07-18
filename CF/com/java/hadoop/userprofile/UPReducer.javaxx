@@ -1,0 +1,62 @@
+package com.java.hadoop.userprofile;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+public class UPReducer extends Reducer<Text, Text, Text, Text> 
+{
+	public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException 
+	{
+		Map<String, Integer> item_cnt_map = new HashMap<String, Integer>();
+		Map<String, Integer> user_pv_map = new HashMap<String, Integer>();
+		for (Text val : values)
+		{
+			String type = val.toString().substring(0, 2);
+			if (user_pv_map.containsKey(type))
+			{
+				int cnt = user_pv_map.get(type);
+				cnt++;
+				user_pv_map.put(type, cnt);
+			}
+			else
+			{
+				user_pv_map.put(type, 1);
+			}
+
+			if (item_cnt_map.containsKey(val.toString()))
+			{
+				int cnt = item_cnt_map.get(val.toString());
+				cnt++;
+				item_cnt_map.put(val.toString(), cnt);
+			}
+			else
+			{
+				item_cnt_map.put(val.toString(), 1);
+			}
+		}
+
+		// output for each VR type
+		Map<String, String> type_list_map = new HashMap<String, String>();
+		for (String type : user_pv_map.keySet())
+		{
+			String out = user_pv_map.get(type) + "";
+			type_list_map.put(type, out);
+		}
+		for (String item : item_cnt_map.keySet()) // not record the count of each items
+		{
+			String type = item.substring(0, 2);
+			String out = type_list_map.get(type);
+			out += ("\t" + item);
+			type_list_map.put(type, out);
+		}
+		for (String type : type_list_map.keySet())
+		{
+			String out = type_list_map.get(type);
+			context.write(key, new Text(out));
+		}
+	}	
+}
